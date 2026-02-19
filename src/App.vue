@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { isAuthenticated, getCurrentUser, logout, type UserResponse } from './services/api'
 
@@ -10,6 +10,7 @@ const cargandoUsuario = ref(true)
 
 const cargarUsuario = async () => {
   if (!isAuthenticated()) {
+    usuario.value = null
     cargandoUsuario.value = false
     return
   }
@@ -18,6 +19,7 @@ const cargarUsuario = async () => {
     usuario.value = await getCurrentUser()
   } catch (error) {
     console.error('Error al cargar usuario:', error)
+    usuario.value = null
   } finally {
     cargandoUsuario.value = false
   }
@@ -37,6 +39,44 @@ const isActiveRoute = (routeName: string) => {
   return route.name === routeName
 }
 
+// Recargar usuario cuando cambie la ruta
+watch(
+  () => route.name,
+  (newRouteName) => {
+    const authenticated = isAuthenticated()
+    if (authenticated && (newRouteName === 'chat' || newRouteName === 'documents')) {
+      // Recargar usuario si no está cargado o si acabamos de autenticarnos
+      if (!usuario.value) {
+        cargarUsuario()
+      }
+    } else if (!authenticated) {
+      usuario.value = null
+      cargandoUsuario.value = false
+    }
+  },
+  { immediate: true }
+)
+
+// Escuchar cambios en localStorage para detectar login/logout
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', () => {
+    if (route.name === 'chat' || route.name === 'documents') {
+      cargarUsuario()
+    }
+  })
+  
+  // También escuchar eventos personalizados si se emiten desde Auth
+  window.addEventListener('auth-changed', () => {
+    // Recargar usuario cuando se detecta un cambio de autenticación
+    if (isAuthenticated()) {
+      cargarUsuario()
+    } else {
+      usuario.value = null
+      cargandoUsuario.value = false
+    }
+  })
+}
+
 onMounted(() => {
   cargarUsuario()
 })
@@ -45,7 +85,7 @@ onMounted(() => {
 <template>
   <div class="app-container">
     <!-- Navegación solo para rutas autenticadas -->
-    <nav v-if="isAuthenticated() && (route.name === 'chat' || route.name === 'documents')" class="navigation">
+    <nav v-if="isAuthenticated() && (route.name === 'chat' || route.name === 'documents') && !cargandoUsuario" class="navigation">
       <div class="nav-left">
         <button
           @click="cambiarVista('chat')"

@@ -58,6 +58,8 @@ const handleLogin = async () => {
 
   try {
     await login(loginForm.value)
+    // Emitir evento para notificar a App.vue que el usuario se autenticó
+    window.dispatchEvent(new Event('auth-changed'))
     router.push({ name: 'chat' })
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Error al iniciar sesión'
@@ -92,6 +94,8 @@ const handleRegister = async () => {
       username: registerForm.value.username,
       password: registerForm.value.password,
     })
+    // Emitir evento para notificar a App.vue que el usuario se autenticó
+    window.dispatchEvent(new Event('auth-changed'))
     router.push({ name: 'chat' })
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Error al registrar usuario'
