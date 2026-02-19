@@ -7,6 +7,8 @@ const router = useRouter()
 const route = useRoute()
 const usuario = ref<UserResponse | null>(null)
 const cargandoUsuario = ref(true)
+const autenticado = ref(isAuthenticated())
+
 
 const cargarUsuario = async () => {
   if (!isAuthenticated()) {
@@ -42,17 +44,8 @@ const isActiveRoute = (routeName: string) => {
 // Recargar usuario cuando cambie la ruta
 watch(
   () => route.name,
-  (newRouteName) => {
-    const authenticated = isAuthenticated()
-    if (authenticated && (newRouteName === 'chat' || newRouteName === 'documents')) {
-      // Recargar usuario si no está cargado o si acabamos de autenticarnos
-      if (!usuario.value) {
-        cargarUsuario()
-      }
-    } else if (!authenticated) {
-      usuario.value = null
-      cargandoUsuario.value = false
-    }
+  () => {
+    autenticado.value = isAuthenticated()
   },
   { immediate: true }
 )
@@ -64,11 +57,11 @@ if (typeof window !== 'undefined') {
       cargarUsuario()
     }
   })
-  
-  // También escuchar eventos personalizados si se emiten desde Auth
+
   window.addEventListener('auth-changed', () => {
-    // Recargar usuario cuando se detecta un cambio de autenticación
-    if (isAuthenticated()) {
+    autenticado.value = isAuthenticated()
+
+    if (autenticado.value) {
       cargarUsuario()
     } else {
       usuario.value = null
@@ -85,7 +78,7 @@ onMounted(() => {
 <template>
   <div class="app-container">
     <!-- Navegación solo para rutas autenticadas -->
-    <nav v-if="isAuthenticated() && (route.name === 'chat' || route.name === 'documents') && !cargandoUsuario" class="navigation">
+    <nav v-if="autenticado && (route.name === 'chat' || route.name === 'documents') && !cargandoUsuario" class="navigation">
       <div class="nav-left">
         <button
           @click="cambiarVista('chat')"
