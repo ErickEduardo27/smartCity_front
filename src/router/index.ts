@@ -37,6 +37,7 @@ const router = createRouter({
 
 // Guard de navegación
 router.beforeEach((to, from, next) => {
+  console.log(from)
   const requiresAuth = to.meta.requiresAuth === true
   
   if (requiresAuth && !isAuthenticated()) {
