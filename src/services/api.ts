@@ -4,7 +4,7 @@
  */
 
 // Usar proxy en desarrollo, URL directa en producción
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
   (import.meta.env.DEV ? '' : 'http://172.24.174.219:8020')
 const API_PREFIX = '/api/v1'
 
