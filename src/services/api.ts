@@ -532,98 +532,26 @@ export function streamChat(
 // ========== DOCUMENTOS ==========
 
 /**
- * Obtiene una URL firmada (presigned URL) para subir un archivo directamente a MinIO
+ * Sube un documento
  */
-export async function getPresignedUrl(
-  filename: string,
-  fileType: string,
-  fileSize: number
-): Promise<PresignedUrlResponse> {
-  const response = await authenticatedFetch(`/documents/presigned-url`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      filename,
-      file_type: fileType,
-      file_size: fileSize,
-    }),
-  })
-
-  return handleResponse<PresignedUrlResponse>(response)
-}
-
-/**
- * Sube un archivo directamente a MinIO usando una presigned URL
- */
-async function uploadFileToMinIO(
-  presignedUrl: string,
-  file: File
-): Promise<void> {
-  const response = await fetch(presignedUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': file.type,
-    },
-    body: file,
-  })
-
-  if (!response.ok) {
-    throw new Error(`Error uploading file to MinIO: ${response.statusText}`)
+export async function uploadDocument(file: File): Promise<DocumentResponse> {
+  const token = getToken()
+  if (!token) {
+    throw new Error('No autenticado. Por favor, inicia sesión.')
   }
-}
 
-/**
- * Registra la metadata de un documento después de subirlo a MinIO
- */
-async function uploadDocumentMetadata(
-  metadata: DocumentMetadata
-): Promise<DocumentResponse> {
-  const response = await authenticatedFetch(`/documents/upload`, {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch(`${API_BASE_URL}${API_PREFIX}/documents/upload`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(metadata),
+    body: formData,
   })
 
   return handleResponse<DocumentResponse>(response)
-}
-
-/**
- * Sube un documento usando presigned URLs
- * Flujo: 1) Obtener presigned URL, 2) Subir archivo a MinIO, 3) Registrar metadata
- */
-export async function uploadDocument(file: File): Promise<DocumentResponse> {
-  // Obtener extensión y tipo de archivo
-  const fileExtension = file.name.split('.').pop()?.toLowerCase() || ''
-  const fileTypeMap: Record<string, string> = {
-    pdf: 'pdf',
-    docx: 'docx',
-    txt: 'txt',
-  }
-  const fileType = fileTypeMap[fileExtension] || fileExtension
-
-  // 1. Obtener presigned URL del backend
-  const presignedUrlResponse = await getPresignedUrl(
-    file.name,
-    fileType,
-    file.size
-  )
-
-  // 2. Subir archivo directamente a MinIO usando la presigned URL
-  await uploadFileToMinIO(presignedUrlResponse.presigned_url, file)
-
-  // 3. Registrar metadata en el backend
-  const document = await uploadDocumentMetadata({
-    filename: file.name,
-    file_type: fileType,
-    file_size: file.size,
-    object_name: presignedUrlResponse.object_name,
-  })
-
-  return document
 }
 
 /**
